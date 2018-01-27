@@ -12,10 +12,10 @@
     "url": "https://github.com/blazf/dmoz"
   },
   "main": "./index.js",
-  "dependencies": { },
-  "bundledDependencies": [ ],
-  "devDependencies": { },
-  "scripts": { },
+  "dependencies": {},
+  "bundledDependencies": [],
+  "devDependencies": {},
+  "scripts": {},
   "binary": {
     "module_name": "dmoz",
     "module_path": "./out"
