@@ -14,12 +14,54 @@ void TJsDmoz::Init(v8::Handle<v8::Object> Exports) {
     v8::HandleScope HandleScope(Isolate);
 
     // Add all methods, getters and setters here.
+    NODE_SET_METHOD(Exports, "construct", _construct);
     NODE_SET_METHOD(Exports, "init", _initDmoz);
     NODE_SET_METHOD(Exports, "load", _loadDmoz);
     NODE_SET_METHOD(Exports, "classify", _classify);
 }
 
 PDMozCfy TJsDmoz::DMozCfy = NULL;
+
+void TJsDmoz::construct(const v8::FunctionCallbackInfo<v8::Value>& Args) {
+    v8::Isolate* Isolate = v8::Isolate::GetCurrent();
+    v8::HandleScope HandleScope(Isolate);
+
+    // parse out parameters
+    const PJsonVal ParamJson = TNodeJsUtil::GetArgJson(Args, 0);
+    const TStr RdfPath = ParamJson->GetObjStr("rdfPath");
+    const TStr BowFNm = ParamJson->GetObjStr("bow");
+    const TStr BowPartFNm = ParamJson->GetObjStr("bowPart");
+    const TInt MnCatDocs = ParamJson->GetObjInt("categoryMinSize", 100);
+
+    printf("creating supporting structures ...\n");
+    const PStemmer Stemmer = TStemmer::New(stmtPorter, true);
+    const PSwSet SwSet = TSwSet::New(swstEn523);
+    const PNGramBs NGramBs = TNGramBs::New(1, TInt::Mx, SwSet, Stemmer);
+
+    const PBowDocBs BowDocBs = TBowDocBs::New(SwSet, Stemmer, NGramBs);
+    const PBowDocWgtBs BowDocWgtBs = TBowDocWgtBs::New(BowDocBs, bwwtNrmTFIDF);
+    const PBowSim BowSim = TBowSim::New(bstCos);
+
+    printf("creating DMoz base ...\n");
+    const PDMozBs DMozBs = TDMozBs::LoadTxt(RdfPath);
+
+    printf("extracting document partition ...\n");
+    const PBowDocPart BowDocPart = DMozBs->GetBowDocPart(
+        "Top",
+        TStrV(),
+        TStrV(),
+        BowDocBs,
+        BowDocWgtBs,
+        BowSim,
+        MnCatDocs
+    );
+
+    printf("saving ...\n");
+    BowDocBs->SaveBin(BowFNm);
+    BowDocPart->SaveBin(BowPartFNm);
+
+    printf("done!\n");
+}
 
 void TJsDmoz::initDmoz(const v8::FunctionCallbackInfo<v8::Value>& Args) {
     v8::Isolate* Isolate = v8::Isolate::GetCurrent();

@@ -28,6 +28,9 @@ class TJsDmoz : public node::ObjectWrap {
     static PDMozCfy DMozCfy;
 
   private:
+    /// Parse dmoz RDF files, create and save bow files
+    /// @param {string} rdfPath - path to the two RDF files, the method assumes the files are named `content.rdf.u8` and `structure.rdf.u8`
+    JsDeclareFunction(construct);
     /// Parse dmoz bow files and create classifier according to the filter
     JsDeclareFunction(initDmoz);
     /// Load classifier
