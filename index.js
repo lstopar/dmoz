@@ -8,16 +8,16 @@
 
 const fs = require('fs');
 
-// constructor
-module.exports = class Dmoz {
+const dmoz = require(__dirname + '/out/dmoz.node');
+
+dmoz.Classifier = class Dmoz {
 
     constructor(params) {
         let self = this;
 
         // load binary module
-        const pathDmozBinary = __dirname + '/out/dmoz.node';
         if (fs.existsSync(pathDmozBinary)) {
-            self._classifier = require(pathDmozBinary);
+            self._classifier = dmoz;
         } else {
             throw new Error('dmoz binary not found!');
         }
@@ -84,3 +84,5 @@ module.exports = class Dmoz {
         return Array.from(unique);
     }
 }
+
+module.exports = exports = dmoz;
