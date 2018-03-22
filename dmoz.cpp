@@ -36,28 +36,45 @@ void TJsDmoz::construct(const v8::FunctionCallbackInfo<v8::Value>& Args) {
     printf("creating supporting structures ...\n");
     const PStemmer Stemmer = TStemmer::New(stmtPorter, true);
     const PSwSet SwSet = TSwSet::New(swstEn523);
-    const PNGramBs NGramBs = TNGramBs::New(1, TInt::Mx, SwSet, Stemmer);
-
-    const PBowDocBs BowDocBs = TBowDocBs::New(SwSet, Stemmer, NGramBs);
-    const PBowDocWgtBs BowDocWgtBs = TBowDocWgtBs::New(BowDocBs, bwwtNrmTFIDF);
     const PBowSim BowSim = TBowSim::New(bstCos);
+    /* const PBowSim BowSim = TBowSim::New(bstCos); */
+    const TStr RootCatNm = "Top";
+    TStrV PosCatNmV; TStrV NegCatNmV;
+    PNGramBs NGramBs;
 
     printf("creating DMoz base ...\n");
-    const PDMozBs DMozBs = TDMozBs::LoadTxt(RdfPath);
+    const PDMozBs DMozBs = TDMozBs::LoadTxt(RdfPath, false, false);
 
-    printf("extracting document partition ...\n");
-    const PBowDocPart BowDocPart = DMozBs->GetBowDocPart(
-        "Top",
-        TStrV(),
-        TStrV(),
-        BowDocBs,
-        BowDocWgtBs,
-        BowSim,
-        MnCatDocs
-    );
+    printf("retrieve title&desc-string-vector\n");
+    TStrV DocNmV;   // contains external URL ids
+    TStrV DocStrV;
+    DMozBs->GetSubTreeDocV(RootCatNm, PosCatNmV, NegCatNmV, DocNmV, DocStrV, true, 1);
 
-    printf("saving ...\n");
+    printf("creating BoW\n");
+    PBowDocBs BowDocBs = TBowDocBs::New(SwSet, Stemmer, NGramBs);
+    for (int DocN = 0; DocN < DocNmV.Len(); ++DocN) {
+        const TStr& DocNm = DocNmV[DocN];
+        if (DocN % 10000 == 0) {
+            printf("document %d of %d\r", (DocN+1), DocNmV.Len());
+        }
+
+        const int DId = BowDocBs->AddHtmlDoc(DocNm, TStrV(), DocStrV[DocN]);
+        const TStr UrlStr = DMozBs->GetExtUrlStr(DocNm.GetInt());
+        BowDocBs->PutDocDescStr(DId, UrlStr);
+    }
+    BowDocBs->AssertOk();
+    DocNmV.Clr();
+    DocStrV.Clr();
+
+    printf("saving BoW file\n");
     BowDocBs->SaveBin(BowFNm);
+
+    printf("creating BoW partition\n");
+    const PBowDocWgtBs BowDocWgtBs = TBowDocWgtBs::New(BowDocBs, bwwtLogDFNrmTFIDF);
+    PBowDocPart BowDocPart=
+           DMozBs->GetBowDocPart(RootCatNm, PosCatNmV, NegCatNmV, BowDocBs, BowDocWgtBs, BowSim, MnCatDocs);
+
+    printf("saving BoW partition\n");
     BowDocPart->SaveBin(BowPartFNm);
 
     printf("done!\n");

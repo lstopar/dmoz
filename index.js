@@ -16,11 +16,7 @@ dmoz.Classifier = class Dmoz {
         let self = this;
 
         // load binary module
-        if (fs.existsSync(pathDmozBinary)) {
-            self._classifier = dmoz;
-        } else {
-            throw new Error('dmoz binary not found!');
-        }
+        self._classifier = dmoz;
 
         // check if classifier file exists
         if (fs.existsSync(params.classifier)) {
