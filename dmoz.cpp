@@ -33,6 +33,8 @@ void TJsDmoz::construct(const v8::FunctionCallbackInfo<v8::Value>& Args) {
     const TStr BowPartFNm = ParamJson->GetObjStr("bowPart");
     const TInt MnCatDocs = ParamJson->GetObjInt("categoryMinSize", 100);
 
+    printf("using path: %s", RdfPath.CStr());
+
     printf("creating supporting structures ...\n");
     const PStemmer Stemmer = TStemmer::New(stmtPorter, true);
     const PSwSet SwSet = TSwSet::New(swstEn523);
@@ -45,16 +47,18 @@ void TJsDmoz::construct(const v8::FunctionCallbackInfo<v8::Value>& Args) {
     printf("creating DMoz base ...\n");
     const PDMozBs DMozBs = TDMozBs::LoadTxt(RdfPath, false, false);
 
+    printf("total external URLs: %ld\n", DMozBs->GetExtUrls());
+
     printf("retrieve title&desc-string-vector\n");
     TStrV DocNmV;   // contains external URL ids
     TStrV DocStrV;
-    DMozBs->GetSubTreeDocV(RootCatNm, PosCatNmV, NegCatNmV, DocNmV, DocStrV, true, 1);
+    DMozBs->GetSubTreeDocV(RootCatNm, PosCatNmV, NegCatNmV, DocNmV, DocStrV, false, 1);
 
-    printf("creating BoW\n");
+    printf("creating BoW, total documents: %d\n", DocNmV.Len());
     PBowDocBs BowDocBs = TBowDocBs::New(SwSet, Stemmer, NGramBs);
     for (int DocN = 0; DocN < DocNmV.Len(); ++DocN) {
         const TStr& DocNm = DocNmV[DocN];
-        if (DocN % 10000 == 0) {
+        if (DocN % 1000 == 0) {
             printf("document %d of %d\r", (DocN+1), DocNmV.Len());
         }
 
@@ -132,11 +136,14 @@ void TJsDmoz::classify(const v8::FunctionCallbackInfo<v8::Value>& Args) {
     DMozCfy->Classify(Str, CatNmWgtV, KeyWdWgtV, MxCats);
     // translate to json
     v8::Local<v8::Object> ResObj = v8::Object::New(Isolate);
-    v8::Local<v8::Object> CatNmArr = v8::Array::New(Isolate, CatNmWgtV.Len());
+    v8::Local<v8::Object> CatArr = v8::Array::New(Isolate, CatNmWgtV.Len());
     for (int CatNmN = 0; CatNmN < CatNmWgtV.Len(); CatNmN++) {
-        CatNmArr->Set(CatNmN, v8::String::NewFromUtf8(Isolate, CatNmWgtV[CatNmN].Key.CStr()));
+        v8::Local<v8::Object> CatObj = v8::Object::New(Isolate);
+        CatObj->Set(v8::String::NewFromUtf8(Isolate, "category"), v8::String::NewFromUtf8(Isolate, CatNmWgtV[CatNmN].Key.CStr()));
+        CatObj->Set(v8::String::NewFromUtf8(Isolate, "weight"), v8::Number::New(Isolate, CatNmWgtV[CatNmN].Dat));
+        CatArr->Set(CatNmN, CatObj);
     }
-    ResObj->Set(v8::String::NewFromUtf8(Isolate, "categories"), CatNmArr);
+    ResObj->Set(v8::String::NewFromUtf8(Isolate, "categories"), CatArr);
     v8::Local<v8::Object> KeyWdArr = v8::Array::New(Isolate, KeyWdWgtV.Len());
     for (int KeyWdN = 0; KeyWdN < KeyWdWgtV.Len(); KeyWdN++) {
         KeyWdArr->Set(KeyWdN, v8::String::NewFromUtf8(Isolate, KeyWdWgtV[KeyWdN].Key.CStr()));

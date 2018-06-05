@@ -46,12 +46,18 @@ dmoz.Classifier = class Dmoz {
         // go over and see if we match a partial
         for (let partial of self.partials) {
             // if we match both prefix and suffix, then we found the match
-            if (category.startsWith(partial[0]) && category.endsWith(partial[1])) {
-                return partial[1];
+            if (category.category.startsWith(partial[0]) && category.category.endsWith(partial[1])) {
+                return {
+                    category: partial[1],
+                    weight: category.weight
+                }
             }
         }
         // if no match, just remove the "Top/"
-        return category.slice(4);
+        return {
+            category: category.category.slice(4),
+            weight: category.weight
+        };
     }
 
     classifyTop(text) {
@@ -72,12 +78,17 @@ dmoz.Classifier = class Dmoz {
         results = results.categories.map(cat => self._cleanCategory(cat));
         // get first unique maxCats
         let unique = new Set();
+        let result = [];
         for (let category of results) {
-            unique.add(category);
+            let name = category.category;
+            if (!unique.has(name)) {
+                unique.add(name);
+                result.push(category);
+            }
             if (unique.size == maxCats) { break; }
         }
         // return top unique categories
-        return Array.from(unique);
+        return result;
     }
 }
 
