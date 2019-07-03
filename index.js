@@ -15,8 +15,11 @@ dmoz.Classifier = class Dmoz {
     constructor(params) {
         let self = this;
 
+        if (params.blacklist == null) { params.blacklist = []; }
+
         // load binary module
         self._classifier = dmoz;
+        self._blacklist = params.blacklist;
 
         // check if classifier file exists
         if (fs.existsSync(params.classifier)) {
@@ -72,21 +75,60 @@ dmoz.Classifier = class Dmoz {
 
     classify(text, maxCats) {
         let self = this;
+
+        let blacklist = self._blacklist;
+
         // classify document
-        let results = self._classifier.classify(text, 3 * maxCats);
+        let results = self._classifier.classify(text, 7 * maxCats);
         // clean categories
         results = results.categories.map(cat => self._cleanCategory(cat));
         // get first unique maxCats
-        let unique = new Set();
-        let result = [];
+        // let unique = new Set();
+        let uniqueLastWgtSet = new Set();
+        let outputNameToCategoryH = new Map();
+
         for (let category of results) {
             let name = category.category;
-            if (!unique.has(name)) {
-                unique.add(name);
-                result.push(category);
+            let wgt = category.weight;
+
+            let outputName;
+            let categoryWgtStr;
+            
+            let firstSlashIdx = name.indexOf('/');
+            let lastSlashIdx = name.lastIndexOf('/');
+
+            if (firstSlashIdx < 0 || lastSlashIdx < 0) {
+                outputName = name;
+                categoryWgtStr = name + '/' + wgt;
+            } else {
+                let leafCategory = name.substring(lastSlashIdx+1);
+                outputName = name.substring(0, firstSlashIdx) + '/' +
+                                 leafCategory;
+                categoryWgtStr = leafCategory + '/' + wgt;
             }
-            if (unique.size == maxCats) { break; }
+
+            for (let prefix of blacklist) {
+                if (name.startsWith(prefix)) {
+                    continue;
+                }
+            }
+
+            if (!outputNameToCategoryH.has(outputName) && !uniqueLastWgtSet.has(categoryWgtStr)) {
+                // unique.add(outputName);
+                uniqueLastWgtSet.add(categoryWgtStr);
+
+                outputNameToCategoryH.set(outputName, Object.assign(category, {
+                    category: outputName,
+                    fullCategories: [ name ]
+                }));
+            } else {
+                outputNameToCategoryH.get(outputName).fullCategories.push(name);
+            }
+            if (outputNameToCategoryH.size == maxCats) { break; }
         }
+
+        let result = Array.from(outputNameToCategoryH.values());
+        result.sort((cat1, cat2) => cat2.weight - cat1.weight);
         // return top unique categories
         return result;
     }
