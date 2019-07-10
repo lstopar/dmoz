@@ -91,21 +91,18 @@ dmoz.Classifier = class Dmoz {
             let name = category.category;
             let wgt = category.weight;
 
-            let outputName;
-            let categoryWgtStr;
-            
-            let firstSlashIdx = name.indexOf('/');
-            let lastSlashIdx = name.lastIndexOf('/');
+            // let firstSlashIdx = name.indexOf('/');
+            // let lastSlashIdx = name.lastIndexOf('/');
 
-            if (firstSlashIdx < 0 || lastSlashIdx < 0) {
-                outputName = name;
-                categoryWgtStr = name + '/' + wgt;
-            } else {
-                let leafCategory = name.substring(lastSlashIdx+1);
-                outputName = name.substring(0, firstSlashIdx) + '/' +
-                                 leafCategory;
-                categoryWgtStr = leafCategory + '/' + wgt;
-            }
+            // if (firstSlashIdx < 0 || lastSlashIdx < 0) {
+            //     outputName = name;
+            //     categoryWgtStr = name + '/' + wgt;
+            // } else {
+            //     let leafCategory = name.substring(lastSlashIdx+1);
+            //     outputName = name.substring(0, firstSlashIdx) + '/' +
+            //                      leafCategory;
+            //     categoryWgtStr = leafCategory + '/' + wgt;
+            // }
 
             for (let prefix of blacklist) {
                 if (name.startsWith(prefix)) {
@@ -113,17 +110,32 @@ dmoz.Classifier = class Dmoz {
                 }
             }
 
-            if (!outputNameToCategoryH.has(outputName) && !uniqueLastWgtSet.has(categoryWgtStr)) {
-                // unique.add(outputName);
-                uniqueLastWgtSet.add(categoryWgtStr);
+            let spl = name.split('/');
+            let relevantCategories = spl.slice(0, 3);
+            let outputName = relevantCategories.join('/');
+            let categoryWgtStr = outputName + '/' + wgt;
 
+            if (uniqueLastWgtSet.has(categoryWgtStr) && !outputNameToCategoryH.has(outputName)) {
                 outputNameToCategoryH.set(outputName, Object.assign(category, {
                     category: outputName,
                     fullCategories: [ name ]
                 }));
-            } else {
-                outputNameToCategoryH.get(outputName).fullCategories.push(name);
+                continue;
             }
+
+            if (outputNameToCategoryH.has(outputName)) {
+                outputNameToCategoryH.get(outputName).fullCategories.push(name);
+                continue;
+            }
+
+            // unique.add(outputName);
+            uniqueLastWgtSet.add(categoryWgtStr);
+
+            outputNameToCategoryH.set(outputName, Object.assign(category, {
+                category: outputName,
+                fullCategories: [ name ]
+            }));
+
             if (outputNameToCategoryH.size == maxCats) { break; }
         }
 
