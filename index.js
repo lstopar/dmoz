@@ -73,8 +73,10 @@ dmoz.Classifier = class Dmoz {
         return self._cleanCategory(topCat);
     }
 
-    classify(text, maxCats) {
+    classify(text, maxCats, cutoffSimilarity) {
         let self = this;
+
+        if (cutoffSimilarity == null) { cutoffSimilarity = 0.0; }
 
         let blacklist = self._blacklist;
 
@@ -91,18 +93,7 @@ dmoz.Classifier = class Dmoz {
             let name = category.category;
             let wgt = category.weight;
 
-            // let firstSlashIdx = name.indexOf('/');
-            // let lastSlashIdx = name.lastIndexOf('/');
-
-            // if (firstSlashIdx < 0 || lastSlashIdx < 0) {
-            //     outputName = name;
-            //     categoryWgtStr = name + '/' + wgt;
-            // } else {
-            //     let leafCategory = name.substring(lastSlashIdx+1);
-            //     outputName = name.substring(0, firstSlashIdx) + '/' +
-            //                      leafCategory;
-            //     categoryWgtStr = leafCategory + '/' + wgt;
-            // }
+            if (wgt < cutoffSimilarity) { break; }
 
             for (let prefix of blacklist) {
                 if (name.startsWith(prefix)) {
